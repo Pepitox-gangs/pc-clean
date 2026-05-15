@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PC Cleaner — Nettoyeur Windows</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@300;400;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f14;
+    --bg2: #13151c;
+    --bg3: #1a1d27;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --accent: #00e5a0;
+    --accent2: #00b8ff;
+    --accent3: #ff4d6d;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --warn: #f59e0b;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .logo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,229,160,0.08);
+    border: 1px solid rgba(0,229,160,0.2);
+    border-radius: 100px;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    margin-bottom: 20px;
+  }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 12px;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 300;
+    max-width: 460px;
+    margin: 0 auto;
+    line-height: 1.7;
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .stat {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 20px;
+    text-align: center;
+  }
+
+  .stat-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+    display: block;
+  }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 4px;
+    display: block;
+  }
+
+  /* Section title */
+  .section-title {
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 14px;
+    padding-left: 4px;
+  }
+
+  /* Task grid */
+  .task-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+
+  .task-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  .task-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .task-card:hover {
+    border-color: var(--border2);
+    background: var(--bg3);
+    transform: translateY(-2px);
+  }
+
+  .task-card.selected {
+    border-color: rgba(0,229,160,0.35);
+    background: rgba(0,229,160,0.04);
+  }
+
+  .task-card.selected::before { opacity: 1; }
+
+  .task-card.danger.selected {
+    border-color: rgba(255,77,109,0.35);
+    background: rgba(255,77,109,0.04);
+  }
+
+  .task-card.danger::before { background: var(--accent3); }
+
+  .task-card.warn.selected {
+    border-color: rgba(245,158,11,0.35);
+    background: rgba(245,158,11,0.04);
+  }
+
+  .task-card.warn::before { background: var(--warn); }
+
+  .task-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .task-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    background: rgba(0,229,160,0.1);
+    border: 1px solid rgba(0,229,160,0.15);
+    flex-shrink: 0;
+  }
+
+  .task-icon.danger { background: rgba(255,77,109,0.1); border-color: rgba(255,77,109,0.15); }
+  .task-icon.warn { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.15); }
+
+  .checkbox {
+    width: 20px; height: 20px;
+    border: 1.5px solid var(--border2);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .selected .checkbox {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+  }
+
+  .danger.selected .checkbox { background: var(--accent3); border-color: var(--accent3); }
+  .warn.selected .checkbox { background: var(--warn); border-color: var(--warn); }
+
+  .task-name {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+
+  .task-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .task-size {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    margin-top: 10px;
+    padding: 3px 8px;
+    background: rgba(0,229,160,0.08);
+    border-radius: 100px;
+    display: inline-block;
+  }
+
+  .task-size.danger { color: var(--accent3); background: rgba(255,77,109,0.08); }
+  .task-size.warn { color: var(--warn); background: rgba(245,158,11,0.08); }
+
+  /* Action bar */
+  .action-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+
+  .btn {
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Sora', sans-serif;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+    flex: 1;
+    justify-content: center;
+    min-width: 200px;
+  }
+
+  .btn-primary:hover { background: #00ffb3; transform: translateY(-1px); }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border2);
+  }
+
+  .btn-outline:hover { background: var(--bg3); border-color: rgba(255,255,255,0.2); }
+
+  .select-count {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    margin-left: auto;
+  }
+
+  /* Script output */
+  .output-section {
+    display: none;
+  }
+
+  .output-section.visible { display: block; }
+
+  .output-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    flex-wrap: gap;
+    gap: 12px;
+  }
+
+  .output-title {
+    font-size: 13px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .output-title::before {
+    content: '❯';
+    font-size: 10px;
+  }
+
+  .copy-btn {
+    padding: 8px 16px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .copy-btn:hover { background: rgba(0,229,160,0.1); border-color: rgba(0,229,160,0.3); color: var(--accent); }
+
+  .script-box {
+    background: #080a0f;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    color: #a8b4c8;
+    white-space: pre-wrap;
+    max-height: 360px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+  }
+
+  .script-box::-webkit-scrollbar { width: 5px; }
+  .script-box::-webkit-scrollbar-track { background: transparent; }
+  .script-box::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  .ps-comment { color: #4b5563; }
+  .ps-cmd { color: var(--accent); }
+  .ps-var { color: var(--accent2); }
+  .ps-str { color: #f59e0b; }
+
+  /* Instructions */
+  .instructions {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent2);
+    border-radius: 0 14px 14px 0;
+    padding: 20px 24px;
+    margin-bottom: 28px;
+  }
+
+  .instr-title {
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 14px;
+  }
+
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    font-size: 13px;
+    color: #9ca3af;
+    line-height: 1.5;
+  }
+
+  .step-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: rgba(0,184,255,0.12);
+    border: 1px solid rgba(0,184,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent2);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  kbd {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 5px;
+    padding: 2px 7px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text);
+  }
+
+  .warning-box {
+    background: rgba(245,158,11,0.07);
+    border: 1px solid rgba(245,158,11,0.2);
+    border-radius: 12px;
+    padding: 14px 18px;
+    font-size: 12px;
+    color: #d97706;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 28px;
+  }
+
+  .warning-box.hidden { display: none; }
+
+  footer {
+    text-align: center;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+  }
+
+  @media (max-width: 540px) {
+    .stats-bar { grid-template-columns: 1fr; }
+    .task-grid { grid-template-columns: 1fr; }
+    .btn-primary { min-width: unset; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo-badge"><div class="dot"></div> PC CLEANER — WINDOWS</div>
+    <h1>Nettoyeur<br><span>Ultra-rapide</span></h1>
+    <p class="subtitle">Sélectionne les tâches de nettoyage puis génère le script PowerShell à exécuter sur ton PC.</p>
+  </header>
+
+  <div class="stats-bar">
+    <div class="stat">
+      <span class="stat-val" id="stat-selected">0</span>
+      <span class="stat-label">Tâches sélectionnées</span>
+    </div>
+    <div class="stat">
+      <span class="stat-val" id="stat-gain">0 MB</span>
+      <span class="stat-label">Espace estimé libéré</span>
+    </div>
+    <div class="stat">
+      <span class="stat-val" id="stat-time">~0 sec</span>
+      <span class="stat-label">Temps estimé</span>
+    </div>
+  </div>
+
+  <div class="section-title">// Nettoyage sûr</div>
+  <div class="task-grid" id="safe-grid"></div>
+
+  <div class="section-title">// Nettoyage avancé</div>
+  <div class="task-grid" id="advanced-grid"></div>
+
+  <div class="section-title">// Actions système (⚠ prudence)</div>
+  <div class="warning-box hidden" id="danger-warn">
+    ⚠️ Tu as sélectionné des tâches risquées. Assure-toi d'avoir sauvegardé ton travail et de comprendre ce que chaque action fait avant de lancer le script.
+  </div>
+  <div class="task-grid" id="danger-grid"></div>
+
+  <div class="action-bar">
+    <button class="btn btn-outline" onclick="selectAll()">Tout sélectionner</button>
+    <button class="btn btn-outline" onclick="clearAll()">Tout décocher</button>
+    <span class="select-count" id="select-label">0 tâche(s) sélectionnée(s)</span>
+    <button class="btn btn-primary" id="generate-btn" onclick="generateScript()" disabled>
+      ⚡ Générer le script PowerShell
+    </button>
+  </div>
+
+  <div class="output-section" id="output-section">
+    <div class="instructions">
+      <div class="instr-title">📋 Comment utiliser ce script</div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><span>Clique sur <strong>Copier le script</strong> ci-dessous</span></div>
+        <div class="step"><div class="step-num">2</div><span>Ouvre le menu Démarrer, tape <kbd>PowerShell</kbd>, fais clic droit → <strong>Exécuter en tant qu'administrateur</strong></span></div>
+        <div class="step"><div class="step-num">3</div><span>Colle le script avec <kbd>Ctrl</kbd>+<kbd>V</kbd> puis appuie sur <kbd>Entrée</kbd></span></div>
+        <div class="step"><div class="step-num">4</div><span>Attends la fin du script — un message de confirmation s'affichera</span></div>
+      </div>
+    </div>
+
+    <div class="output-header">
+      <div class="output-title">Script généré — PowerShell</div>
+      <button class="copy-btn" onclick="copyScript()" id="copy-btn">📋 Copier le script</button>
+    </div>
+    <div class="script-box" id="script-output"></div>
+  </div>
+
+  <footer>PC CLEANER v1.0 — Généré par Claude · Aucune donnée envoyée · Tout s'exécute localement</footer>
+</div>
+
+<script>
+const tasks = [
+  {
+    id: 'recycle', name: 'Vider la corbeille', icon: '🗑️',
+    desc: 'Supprime définitivement les fichiers dans la corbeille.',
+    size: '~variable', gain: 500, time: 2, cat: 'safe', level: 'safe',
+    script: `# Vider la corbeille
+Clear-RecycleBin -Force -ErrorAction SilentlyContinue
+Write-Host "[OK] Corbeille vidée" -ForegroundColor Green`
+  },
+  {
+    id: 'temp', name: 'Fichiers temporaires', icon: '📂',
+    desc: 'Supprime les fichiers %TEMP% inutiles créés par Windows.',
+    size: '~1-5 GB', gain: 2000, time: 10, cat: 'safe', level: 'safe',
+    script: `# Supprimer les fichiers temporaires utilisateur
+Remove-Item -Path "$env:TEMP\\*" -Recurse -Force -ErrorAction SilentlyContinue
+Write-Host "[OK] Fichiers temporaires utilisateur supprimés" -ForegroundColor Green`
+  },
+  {
+    id: 'temp-sys', name: 'Temp système Windows', icon: '🖥️',
+    desc: 'Vide le dossier temporaire de Windows (C:\\Windows\\Temp).',
+    size: '~500 MB', gain: 500, time: 8, cat: 'safe', level: 'safe',
+    script: `# Supprimer les fichiers temporaires système
+Remove-Item -Path "C:\\Windows\\Temp\\*" -Recurse -Force -ErrorAction SilentlyContinue
+Write-Host "[OK] Temp système nettoyé" -ForegroundColor Green`
+  },
+  {
+    id: 'prefetch', name: 'Dossier Prefetch', icon: '⚡',
+    desc: 'Vide le cache de pré-chargement des applications Windows.',
+    size: '~100 MB', gain: 100, time: 3, cat: 'safe', level: 'safe',
+    script: `# Vider le Prefetch
+Remove-Item -Path "C:\\Windows\\Prefetch\\*" -Recurse -Force -ErrorAction SilentlyContinue
+Write-Host "[OK] Prefetch vidé" -ForegroundColor Green`
+  },
+  {
+    id: 'browser-cache', name: 'Cache navigateurs', icon: '🌐',
+    desc: 'Vide le cache de Chrome, Edge et Firefox.',
+    size: '~500 MB', gain: 500, time: 5, cat: 'safe', level: 'safe',
+    script: `# Vider le cache Chrome
+$chromePath = "$env:LOCALAPPDATA\\Google\\Chrome\\User Data\\Default\\Cache"
+if (Test-Path $chromePath) {
+    Remove-Item -Path "$chromePath\\*" -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "[OK] Cache Chrome vidé" -ForegroundColor Green
+}
+# Vider le cache Edge
+$edgePath = "$env:LOCALAPPDATA\\Microsoft\\Edge\\User Data\\Default\\Cache"
+if (Test-Path $edgePath) {
+    Remove-Item -Path "$edgePath\\*" -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "[OK] Cache Edge vidé" -ForegroundColor Green
+}
+# Vider le cache Firefox
+$ffPath = "$env:APPDATA\\Mozilla\\Firefox\\Profiles"
+if (Test-Path $ffPath) {
+    Get-ChildItem $ffPath -Recurse -Directory -Filter "cache2" | ForEach-Object {
+        Remove-Item -Path "$($_.FullName)\\*" -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    Write-Host "[OK] Cache Firefox vidé" -ForegroundColor Green
+}`
+  },
+  {
+    id: 'thumbnails', name: 'Cache des vignettes', icon: '🖼️',
+    desc: 'Supprime le cache d\'aperçu des fichiers (sera recréé automatiquement).',
+    size: '~200 MB', gain: 200, time: 4, cat: 'safe', level: 'safe',
+    script: `# Supprimer le cache des vignettes
+$thumbPath = "$env:LOCALAPPDATA\\Microsoft\\Windows\\Explorer"
+Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
+Start-Sleep 1
+Remove-Item -Path "$thumbPath\\thumbcache_*.db" -Force -ErrorAction SilentlyContinue
+Start-Process explorer
+Write-Host "[OK] Cache vignettes supprimé" -ForegroundColor Green`
+  },
+  {
+    id: 'downloads', name: 'Vieux téléchargements', icon: '📥',
+    desc: 'Supprime les fichiers de +30 jours dans le dossier Téléchargements.',
+    size: '~variable', gain: 1000, time: 6, cat: 'advanced', level: 'warn',
+    script: `# Supprimer les vieux téléchargements (+30 jours)
+$dlPath = "$env:USERPROFILE\\Downloads"
+$limit = (Get-Date).AddDays(-30)
+Get-ChildItem -Path $dlPath -File | Where-Object { $_.LastWriteTime -lt $limit } | Remove-Item -Force -ErrorAction SilentlyContinue
+Write-Host "[OK] Vieux téléchargements supprimés" -ForegroundColor Green`
+  },
+  {
+    id: 'event-logs', name: 'Journaux d\'événements', icon: '📋',
+    desc: 'Efface tous les journaux Windows (Sécurité, Application, Système).',
+    size: '~500 MB', gain: 500, time: 5, cat: 'advanced', level: 'warn',
+    script: `# Effacer les journaux d'événements Windows
+Get-EventLog -List | ForEach-Object {
+    Try { Clear-EventLog -LogName $_.Log -ErrorAction SilentlyContinue } Catch {}
+}
+Write-Host "[OK] Journaux d'événements effacés" -ForegroundColor Green`
+  },
+  {
+    id: 'windows-update', name: 'Cache Windows Update', icon: '🔄',
+    desc: 'Supprime les fichiers de mise à jour installés, inutiles après installation.',
+    size: '~2 GB', gain: 2000, time: 15, cat: 'advanced', level: 'warn',
+    script: `# Nettoyer le cache Windows Update
+Stop-Service -Name wuauserv -Force -ErrorAction SilentlyContinue
+Stop-Service -Name bits -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "C:\\Windows\\SoftwareDistribution\\Download\\*" -Recurse -Force -ErrorAction SilentlyContinue
+Start-Service -Name wuauserv -ErrorAction SilentlyContinue
+Start-Service -Name bits -ErrorAction SilentlyContinue
+Write-Host "[OK] Cache Windows Update nettoyé" -ForegroundColor Green`
+  },
+  {
+    id: 'dns-cache', name: 'Cache DNS', icon: '🌍',
+    desc: 'Vide le cache DNS local — utile en cas de problèmes réseau.',
+    size: 'réseau', gain: 0, time: 1, cat: 'advanced', level: 'safe',
+    script: `# Vider le cache DNS
+ipconfig /flushdns | Out-Null
+Write-Host "[OK] Cache DNS vidé" -ForegroundColor Green`
+  },
+  {
+    id: 'disk-cleanup', name: 'Nettoyage disque complet', icon: '💽',
+    desc: 'Lance l\'utilitaire Cleanmgr de Windows avec tous les paramètres activés.',
+    size: '~3-10 GB', gain: 5000, time: 120, cat: 'advanced', level: 'safe',
+    script: `# Nettoyer avec Cleanmgr (automatique, toutes catégories)
+$key = "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VolumeCaches"
+Get-ChildItem $key | ForEach-Object { Set-ItemProperty $_.PSPath StateFlags0064 1 -Type DWord -ErrorAction SilentlyContinue }
+Start-Process cleanmgr.exe -ArgumentList "/sagerun:64" -Wait
+Write-Host "[OK] Nettoyage disque terminé" -ForegroundColor Green`
+  },
+  {
+    id: 'recycle-restore', name: 'Vider sans récupération', icon: '🔒',
+    desc: 'Écrase les fichiers supprimés pour qu\'ils soient irrécupérables (SDelete requis).',
+    size: 'sécurité', gain: 0, time: 60, cat: 'danger', level: 'danger',
+    script: `# Effacement sécurisé (nécessite SDelete de Sysinternals)
+# Télécharge SDelete : https://learn.microsoft.com/en-us/sysinternals/downloads/sdelete
+# Puis exécute : sdelete64.exe -p 3 -s -q C:\\
+Write-Host "[INFO] Télécharge SDelete depuis Microsoft Sysinternals pour l'effacement sécurisé" -ForegroundColor Yellow
+Write-Host "[INFO] https://learn.microsoft.com/en-us/sysinternals/downloads/sdelete" -ForegroundColor Cyan`
+  },
+  {
+    id: 'startup', name: 'Démarrage automatique', icon: '🚀',
+    desc: 'Liste les programmes au démarrage — ouvre le Gestionnaire des tâches.',
+    size: 'performance', gain: 0, time: 1, cat: 'danger', level: 'danger',
+    script: `# Afficher les programmes au démarrage (puis ouvrir le Gestionnaire des tâches)
+Write-Host "[INFO] Programmes au démarrage détectés :" -ForegroundColor Yellow
+Get-CimInstance Win32_StartupCommand | Select-Object Name, Command, Location | Format-Table -AutoSize
+Start-Process taskmgr.exe
+Write-Host "[OK] Gestionnaire des tâches ouvert — va dans l'onglet Démarrage pour désactiver" -ForegroundColor Green`
+  },
+];
+
+let selected = new Set();
+
+function renderGrid() {
+  const safe = tasks.filter(t => t.cat === 'safe');
+  const adv = tasks.filter(t => t.cat === 'advanced');
+  const danger = tasks.filter(t => t.cat === 'danger');
+  document.getElementById('safe-grid').innerHTML = safe.map(renderCard).join('');
+  document.getElementById('advanced-grid').innerHTML = adv.map(renderCard).join('');
+  document.getElementById('danger-grid').innerHTML = danger.map(renderCard).join('');
+}
+
+function renderCard(t) {
+  const sel = selected.has(t.id);
+  const cls = t.level === 'danger' ? 'danger' : t.level === 'warn' ? 'warn' : '';
+  return `<div class="task-card ${cls} ${sel ? 'selected' : ''}" onclick="toggle('${t.id}')">
+    <div class="task-header">
+      <div class="task-icon ${cls}">${t.icon}</div>
+      <div class="checkbox">${sel ? '✓' : ''}</div>
+    </div>
+    <div class="task-name">${t.name}</div>
+    <div class="task-desc">${t.desc}</div>
+    <div class="task-size ${cls}">${t.size}</div>
+  </div>`;
+}
+
+function toggle(id) {
+  if (selected.has(id)) selected.delete(id);
+  else selected.add(id);
+  update();
+}
+
+function selectAll() { tasks.forEach(t => selected.add(t.id)); update(); }
+function clearAll() { selected.clear(); update(); }
+
+function update() {
+  renderGrid();
+  const count = selected.size;
+  const sel = tasks.filter(t => selected.has(t.id));
+  const gain = sel.reduce((a, t) => a + t.gain, 0);
+  const time = sel.reduce((a, t) => a + t.time, 0);
+  const hasDanger = sel.some(t => t.level === 'danger');
+
+  document.getElementById('stat-selected').textContent = count;
+  document.getElementById('stat-gain').textContent = gain >= 1000 ? (gain/1000).toFixed(1)+' GB' : gain+' MB';
+  document.getElementById('stat-time').textContent = time >= 60 ? '~'+(time/60).toFixed(0)+' min' : '~'+time+' sec';
+  document.getElementById('select-label').textContent = count+' tâche'+(count>1?'s':'')+' sélectionnée'+(count>1?'s':'');
+  document.getElementById('generate-btn').disabled = count === 0;
+  document.getElementById('danger-warn').classList.toggle('hidden', !hasDanger);
+  document.getElementById('output-section').classList.remove('visible');
+}
+
+function generateScript() {
+  const sel = tasks.filter(t => selected.has(t.id));
+  if (!sel.length) return;
+
+  const lines = [
+    `# ================================================`,
+    `# PC CLEANER — Script PowerShell généré automatiquement`,
+    `# Date : ${new Date().toLocaleDateString('fr-FR')}`,
+    `# Tâches : ${sel.map(t => t.name).join(', ')}`,
+    `# ================================================`,
+    `# ⚠ Lance ce script en tant qu'Administrateur`,
+    ``,
+    `$ErrorActionPreference = "SilentlyContinue"`,
+    `Write-Host "PC Cleaner — Démarrage du nettoyage..." -ForegroundColor Cyan`,
+    `Write-Host ""`,
+    ``,
+  ];
+
+  sel.forEach(t => {
+    lines.push(`# ── ${t.name} ──`);
+    lines.push(t.script);
+    lines.push('');
+  });
+
+  lines.push(`Write-Host "" `);
+  lines.push(`Write-Host "=====================================" -ForegroundColor Cyan`);
+  lines.push(`Write-Host "  Nettoyage terminé avec succès ! ✓" -ForegroundColor Green`);
+  lines.push(`Write-Host "=====================================" -ForegroundColor Cyan`);
+  lines.push(`Pause`);
+
+  const code = lines.join('\n');
+
+  const box = document.getElementById('script-output');
+  box.innerHTML = code
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/(#[^\n]*)/g, '<span class="ps-comment">$1</span>')
+    .replace(/\b(Write-Host|Remove-Item|Clear-RecycleBin|Stop-Service|Start-Service|Get-EventLog|Clear-EventLog|Get-ChildItem|Get-CimInstance|Start-Process|Set-ItemProperty|ipconfig|Pause)\b/g, '<span class="ps-cmd">$1</span>')
+    .replace(/(\$[A-Za-z_][A-Za-z0-9_]*)/g, '<span class="ps-var">$1</span>')
+    .replace(/"([^"]*)"/g, '<span class="ps-str">"$1"</span>');
+
+  document.getElementById('output-section').classList.add('visible');
+  document.getElementById('output-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  window._scriptCode = code;
+}
+
+function copyScript() {
+  if (!window._scriptCode) return;
+  navigator.clipboard.writeText(window._scriptCode).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✅ Copié !';
+    setTimeout(() => { btn.textContent = '📋 Copier le script'; }, 2000);
+  });
+}
+
+renderGrid();
+</script>
+</body>
+</html>
